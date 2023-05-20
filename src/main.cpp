@@ -12,7 +12,7 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <WiFiClientSecureBearSSL.h>
-
+// #include <ESP8266mDNS.h>
 #include <AsyncElegantOTA.h>
 
 #include "htmlFiles.h"
@@ -51,7 +51,8 @@ String MQTTStateTopic = MQTTGlobalPrefix + "/state";
 
 
 // Display config
-#define HARDWARE_TYPE MD_MAX72XX::FC16_HW // type of device hardware https://majicdesigns.github.io/MD_MAX72XX/page_hardware.html
+// #define HARDWARE_TYPE MD_MAX72XX::FC16_HW // type of device hardware https://majicdesigns.github.io/MD_MAX72XX/page_hardware.html
+#define HARDWARE_TYPE MD_MAX72XX::DR1CR1RR1_HW // type of device hardware https://majicdesigns.github.io/MD_MAX72XX/page_hardware.html
 //// Display pinout
 #define DATA_PIN  D7                      // WeMos D1 mini GPIO13
 #define CS_PIN    D6                      // WeMos D1 mini GPIO12
@@ -258,7 +259,7 @@ String processor(const String& var){
   return String();
 }
 
-void MQTTPublishHADiscovry(String zone, String device_type) {
+void MQTTPublishHADiscovery(String zone, String device_type) {
   DynamicJsonDocument  root(2048);
   char topic_config[100];
   //char buffer[1024];
@@ -606,6 +607,7 @@ bool isNumeric(String str){
 }
 
 void MQTTCallback(char* topic, byte* payload, int length) {
+  if(length > 50) length = 50;
   String PayloadString = "";
   for (int i = 0; i < length; i++) { PayloadString = PayloadString + (char)payload[i]; }
 
@@ -619,7 +621,7 @@ void MQTTCallback(char* topic, byte* payload, int length) {
       P.setIntensity(intensity);
       writeVarToConfFile("intensity", String(intensity), false, false);
     } else {
-      Serial.print("Supports are only numeric values");
+      Serial.print("Intensity supports only numeric values");
     }
     
   }
@@ -669,7 +671,7 @@ boolean reconnect() {
 
   // Attempt to connect
   if (mqttClient.connect(MQTTGlobalPrefix.c_str(), mqttUsername.c_str(),mqttPassword.c_str())) {
-    MQTTPublishHADiscovry("0", "light");
+    MQTTPublishHADiscovery("0", "light");
     MQTTPublishState();
 
     Serial.printf("\nMQTT subscribe objects");
@@ -677,13 +679,13 @@ boolean reconnect() {
     mqttClient.subscribe((char*) MQTTPower.c_str());
     
     for ( uint8_t n = 0; n < zoneNumbers; n++) {
-      MQTTPublishHADiscovry(String(n), "scrollAlign");
-      MQTTPublishHADiscovry(String(n), "charspacing");
-      MQTTPublishHADiscovry(String(n), "workMode");
-      MQTTPublishHADiscovry(String(n), "scrollPause");
-      MQTTPublishHADiscovry(String(n), "scrollSpeed");
-      MQTTPublishHADiscovry(String(n), "scrollEffectIn");
-      MQTTPublishHADiscovry(String(n), "scrollEffectOut");
+      MQTTPublishHADiscovery(String(n), "scrollAlign");
+      MQTTPublishHADiscovery(String(n), "charspacing");
+      MQTTPublishHADiscovery(String(n), "workMode");
+      MQTTPublishHADiscovery(String(n), "scrollPause");
+      MQTTPublishHADiscovery(String(n), "scrollSpeed");
+      MQTTPublishHADiscovery(String(n), "scrollEffectIn");
+      MQTTPublishHADiscovery(String(n), "scrollEffectOut");
 
       mqttClient.subscribe((char*) MQTTZones[n].message.c_str());
       mqttClient.subscribe((char*) MQTTZones[n].scrollEffectIn.c_str());
@@ -790,24 +792,92 @@ String flashClockDots(String t) {
   return t;
 }
 
+uint8_t utf8Ascii(uint8_t ascii)
+// Convert a single Character from UTF8 to Extended ASCII according to ISO 8859-1,
+// also called ISO Latin-1. Codes 128-159 contain the Microsoft Windows Latin-1
+// extended characters:
+// - codes 0..127 are identical in ASCII and UTF-8
+// - codes 160..191 in ISO-8859-1 and Windows-1252 are two-byte characters in UTF-8
+//                 + 0xC2 then second byte identical to the extended ASCII code.
+// - codes 192..255 in ISO-8859-1 and Windows-1252 are two-byte characters in UTF-8
+//                 + 0xC3 then second byte differs only in the first two bits to extended ASCII code.
+// - codes 128..159 in Windows-1252 are different, but usually only the €-symbol will be needed from this range.
+//                 + The euro symbol is 0x80 in Windows-1252, 0xa4 in ISO-8859-15, and 0xe2 0x82 0xac in UTF-8.
+//
+// Modified from original code at http://playground.arduino.cc/Main/Utf8ascii
+// Extended ASCII encoding should match the characters at http://www.ascii-code.com/
+//
+// Return "0" if a byte has to be ignored.
+{
+  static uint8_t cPrev;
+  uint8_t c = '\0';
+
+  if (ascii < 0x7f)   // Standard ASCII-set 0..0x7F, no conversion
+  {
+    cPrev = '\0';
+    c = ascii;
+  }
+  else
+  {
+    switch (cPrev)  // Conversion depending on preceding UTF8-character
+    {
+    case 0xC2: c = ascii;  break;
+    case 0xC3: c = ascii | 0xC0;  break;
+    case 0x82: if (ascii==0xAC) c = 0x80; // Euro symbol special case
+    }
+    cPrev = ascii;   // save last char
+  }
+
+  // Serial.printf("\nConverted 0x", ascii);
+  // PRINTX(" to 0x", c);
+
+  return(c);
+}
+
+void utf8Ascii(char* s)
+// In place conversion UTF-8 string to Extended ASCII
+// The extended ASCII string is always shorter.
+{
+  uint8_t c;
+  char *cp = s;
+
+  // PRINT("\nConverting: ", s);
+
+  while (*s != '\0')
+  {
+    c = utf8Ascii(*s++);
+    if (c != '\0')
+      *cp++ = c;
+  }
+  *cp = '\0';   // terminate the new string
+}
+
 void displayAnimation() {
   if (P.displayAnimate()) {
     if (zone0newMessageAvailable && P.getZoneStatus(0)) {
-        Serial.printf("\nzone0Message availabel: %s", zone0Message);
+        Serial.printf("\nzone0Message available: %s", zone0Message);
+        // Serial.printf("\nLength of message: %d\nMessage: ", strlen(zone0Message));
+        // for(uint8_t n = 0; n < strlen(zone0Message); n++) Serial.printf("%d ", zone0Message[n]);
+        utf8Ascii(zone0Message);
+        // Serial.printf("\nLength of converted message: %d\nMessage: ", strlen(zone0Message));
+        // for(uint8_t n = 0; n < strlen(zone0Message); n++) Serial.printf("%d ", zone0Message[n]);
+
         zone0newMessageAvailable = false;
         P.setTextBuffer(0, zone0Message);
         P.displayReset(0);
     }
 
     if (zone1newMessageAvailable && P.getZoneStatus(1)) {
-        Serial.printf("\nzone1Message availabel: %s", zone1Message);
+        Serial.printf("\nzone1Message available: %s", zone1Message);
+        utf8Ascii(zone1Message);
         zone1newMessageAvailable = false;
         P.setTextBuffer(1, zone1Message);
         P.displayReset(1);
     }
 
     if (zone2newMessageAvailable && P.getZoneStatus(2)) {
-        Serial.printf("\nzone2Message availabel: %s", zone2Message);
+        Serial.printf("\nzone2Message available: %s", zone2Message);
+        utf8Ascii(zone2Message);
         zone2newMessageAvailable = false;
         P.setTextBuffer(2, zone2Message);
         P.displayReset(2);
@@ -896,7 +966,8 @@ String haApiGet(String sensorId, String sensorPostfix) {
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Start serial....");
+  delay(500);
+  Serial.println("\n\n\n\nStart serial....");
   setupLittleFS();
   
   //WiFi.mode(WIFI_STA);
@@ -905,7 +976,7 @@ void setup() {
   wifiManager.setAPCallback(wifiApWelcomeMessage);
   wifiManager.autoConnect(MQTTGlobalPrefix.c_str(), wifiAPpassword);
   WiFi.hostname(MQTTGlobalPrefix.c_str());
-  Serial.println("");
+  Serial.print("\n");
   Serial.printf("Wifi connected to SSID: %s\n", WiFi.SSID().c_str());
   Serial.printf("Local ip: %s\n", WiFi.localIP().toString().c_str());
   Serial.printf("Gateway: %s\n", WiFi.gatewayIP().toString().c_str());
@@ -914,6 +985,13 @@ void setup() {
   Serial.printf("HostName: %s\n", MQTTGlobalPrefix.c_str());
   
   Serial.printf("MQTT Device Prefix: %s\n", MQTTGlobalPrefix.c_str());
+
+  // if (!MDNS.begin(MQTTGlobalPrefix.c_str())) {
+  //   Serial.println("Error setting up MDNS responder!");
+  //   while (1) { delay(1000); }
+  // }
+  // Serial.println("mDNS responder started");
+  // MDNS.addService("http", "tcp", 80);
 
   // Web server routings
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -1267,5 +1345,6 @@ void loop() {
 
   }
   
+  // MDNS.update();
   displayAnimation();
 }
