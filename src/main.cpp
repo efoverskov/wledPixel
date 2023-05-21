@@ -1122,7 +1122,7 @@ void loop() {
       P.setCharSpacing(0,1);
       P.setFont(0, wledFont_cyrillic);
       P.setSpeed(0, 50);
-      P.setTextEffect(0, PA_SCROLL_LEFT, PA_NO_EFFECT);
+      P.setTextEffect(0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
       zoneNewMessage(0, "ip: " + WiFi.localIP().toString(), "");
       ipInfo = false;
     }
@@ -1198,8 +1198,8 @@ void loop() {
 
     //if (zones[0].workMode == "mqttClient" || zones[1].workMode == "mqttClient" || zones[2].workMode == "mqttClient") mqttClient.disconnect();
     mqttClient.disconnect();
-    if (zones[0].workMode == "mqttClient")  zoneNewMessage(0, "MQTT", "");
-    if (zones[0].workMode == "manualInput") zoneNewMessage(0, "Manual", "");
+    // if (zones[0].workMode == "mqttClient")  zoneNewMessage(0, "MQTT", "");
+    // if (zones[0].workMode == "manualInput") zoneNewMessage(0, "Manual", "");
     if (zones[0].workMode == "owmWeather") {
       if(zones[0].owmWhatToDisplay == "owmWeatherIcon") {
         P.setFont(0, wledSymbolFont);
@@ -1214,8 +1214,8 @@ void loop() {
       P.setTextEffect(1, stringToTextEffectT(zones[1].scrollEffectIn), stringToTextEffectT(zones[1].scrollEffectOut));
       P.setCharSpacing(1, zones[1].charspacing);
       applyZoneFont(1, zones[1].font);
-      if (zones[1].workMode == "mqttClient")  zoneNewMessage(1, "MQTT", "");
-      if (zones[1].workMode == "manualInput") zoneNewMessage(1, "Manual", "");
+      // if (zones[1].workMode == "mqttClient")  zoneNewMessage(1, "MQTT", "");
+      // if (zones[1].workMode == "manualInput") zoneNewMessage(1, "Manual", "");
       if (zones[1].workMode == "owmWeather") {
         if(zones[1].owmWhatToDisplay == "owmWeatherIcon") {
           P.setFont(1, wledSymbolFont);
@@ -1231,8 +1231,8 @@ void loop() {
       P.setTextEffect(2, stringToTextEffectT(zones[2].scrollEffectIn), stringToTextEffectT(zones[2].scrollEffectOut));
       P.setCharSpacing(2, zones[2].charspacing);
       applyZoneFont(2, zones[2].font);
-      if (zones[2].workMode == "mqttClient")  zoneNewMessage(2, "MQTT", "");
-      if (zones[2].workMode == "manualInput") zoneNewMessage(2, "Manual", "");
+      // if (zones[2].workMode == "mqttClient")  zoneNewMessage(2, "MQTT", "");
+      // if (zones[2].workMode == "manualInput") zoneNewMessage(2, "Manual", "");
       if (zones[2].workMode == "owmWeather") {
         if(zones[2].owmWhatToDisplay == "owmWeatherIcon") {
           P.setFont(2, wledSymbolFont);
